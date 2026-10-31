@@ -354,6 +354,28 @@ function drawDimensionAnnotations(
   // Bounding box around artwork
   ctx.strokeRect(left, top, w, h);
 
+  // Corner Resize Handles (Interactive Visual Targets)
+  const handleRadius = 6;
+  const corners = [
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: left, y: bottom },
+    { x: right, y: bottom },
+  ];
+
+  ctx.save();
+  ctx.setLineDash([]);
+  for (const c of corners) {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, handleRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
   // Center vertical guideline
   ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
   ctx.beginPath();
@@ -375,19 +397,19 @@ function drawDimensionAnnotations(
   ctx.lineTo(right, rulerY + 5);
   ctx.stroke();
 
-  // Width label badge
+  // Width label badge (Centimeters First)
   const widthCm = (wIn * 2.54).toFixed(1);
-  const widthLabel = `${wIn.toFixed(1)}" (${widthCm} cm)`;
-  ctx.font = 'bold 13px Inter, sans-serif';
+  const widthLabel = `${widthCm} cm`;
+  ctx.font = 'bold 14px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   const textMetrics = ctx.measureText(widthLabel);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(
-    cx - textMetrics.width / 2 - 6,
-    rulerY - 18,
-    textMetrics.width + 12,
-    18
+    cx - textMetrics.width / 2 - 8,
+    rulerY - 20,
+    textMetrics.width + 16,
+    20
   );
   ctx.fillStyle = '#1e40af';
   ctx.fillText(widthLabel, cx, rulerY - 4);
@@ -403,19 +425,19 @@ function drawDimensionAnnotations(
   ctx.lineTo(rulerX + 5, bottom);
   ctx.stroke();
 
-  // Height label badge
+  // Height label badge (Centimeters First)
   const heightCm = (hIn * 2.54).toFixed(1);
-  const heightLabel = `${hIn.toFixed(1)}" (${heightCm} cm)`;
+  const heightLabel = `${heightCm} cm`;
   ctx.save();
   ctx.translate(rulerX + 18, cy);
   ctx.rotate(Math.PI / 2);
   const hMetrics = ctx.measureText(heightLabel);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(
-    -hMetrics.width / 2 - 6,
-    -14,
-    hMetrics.width + 12,
-    18
+    -hMetrics.width / 2 - 8,
+    -16,
+    hMetrics.width + 16,
+    20
   );
   ctx.fillStyle = '#1e40af';
   ctx.fillText(heightLabel, 0, 0);

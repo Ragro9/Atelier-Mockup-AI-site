@@ -1,7 +1,8 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { PlacementConfig, GarmentPreset } from '../types';
+import React, { useState, useEffect } from 'react';
+import { PlacementConfig } from '../types';
 import { generateTechPackCanvas } from '../utils/fabricShaders';
-import { X, Download, FileText, CheckCircle2, Printer } from 'lucide-react';
+import { X, Download, FileText, CheckCircle2 } from 'lucide-react';
+import { Language } from '../locales/translations';
 
 interface TechPackModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface TechPackModalProps {
   garmentName: string;
   placement: PlacementConfig;
   garmentColor: string;
+  lang: Language;
 }
 
 export const TechPackModal: React.FC<TechPackModalProps> = ({
@@ -19,10 +21,15 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
   garmentName,
   placement,
   garmentColor,
+  lang,
 }) => {
   const [techPackDataUrl, setTechPackDataUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [extraNotes, setExtraNotes] = useState<string>('Standard 1/4" screen alignment tolerance.');
+  const [extraNotes, setExtraNotes] = useState<string>(
+    lang === 'sq'
+      ? 'Toleranca e pozicionimit të printimit +/- 0.5 cm nga qendra e jakës.'
+      : 'Standard 1/4" screen alignment tolerance.'
+  );
 
   useEffect(() => {
     if (!isOpen || !mockupCanvas) return;
@@ -46,6 +53,9 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
 
   if (!isOpen) return null;
 
+  const widthCm = (placement.widthInches * 2.54).toFixed(1);
+  const heightCm = (placement.heightInches * 2.54).toFixed(1);
+
   const handleDownloadTechPack = () => {
     if (!techPackDataUrl) return;
     const link = document.createElement('a');
@@ -65,10 +75,14 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-                Production Tech Pack Specification Sheet
+                {lang === 'sq'
+                  ? 'Fleta Teknike e Prodhimit (Tech Pack Spec Sheet)'
+                  : 'Production Tech Pack Specification Sheet'}
               </h3>
               <p className="text-xs text-zinc-400">
-                Print-ready factory blueprint with exact dimensional measurements and tolerance specs
+                {lang === 'sq'
+                  ? 'Skicë teknike për prodhuesit me përmasa të sakta në centimetra (cm) dhe tolerancë'
+                  : 'Print-ready factory blueprint with exact dimensional measurements in cm'}
               </p>
             </div>
           </div>
@@ -83,18 +97,20 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-4 text-zinc-200">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-zinc-300">Custom Manufacturer Note:</span>
+            <div className="flex items-center gap-2 flex-1">
+              <span className="font-semibold text-zinc-300 shrink-0">
+                {lang === 'sq' ? 'Shënim për Fabrikën:' : 'Custom Note for Factory:'}
+              </span>
               <input
                 type="text"
                 value={extraNotes}
                 onChange={(e) => setExtraNotes(e.target.value)}
-                placeholder="Add special instructions for factory..."
-                className="bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1 text-zinc-200 min-w-[280px]"
+                placeholder={lang === 'sq' ? 'Udhëzime shtesë për printuesin...' : 'Special instructions...'}
+                className="bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1 text-zinc-200 w-full max-w-md"
               />
             </div>
-            <div className="text-zinc-400 text-[11px] font-mono">
-              Dimensions: {placement.widthInches.toFixed(2)}" W × {placement.heightInches.toFixed(2)}" H
+            <div className="text-emerald-400 text-xs font-mono font-bold shrink-0">
+              {widthCm} cm × {heightCm} cm
             </div>
           </div>
 
@@ -103,7 +119,9 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
             {isGenerating ? (
               <div className="py-20 text-center text-zinc-700">
                 <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs font-semibold">Generating high-resolution tech pack sheet...</p>
+                <p className="text-xs font-semibold">
+                  {lang === 'sq' ? 'Po gjenerohet fleta teknike me rezolucion të lartë...' : 'Generating high-resolution tech pack sheet...'}
+                </p>
               </div>
             ) : techPackDataUrl ? (
               <img
@@ -119,14 +137,18 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
         <div className="px-6 py-4 bg-zinc-950/80 border-t border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-zinc-400">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Ready for Screen Printers, DTG Operators &amp; Cut-and-Sew Manufacturers</span>
+            <span>
+              {lang === 'sq'
+                ? 'Gati për sitotip, printera DTG dhe rrobaqepës'
+                : 'Ready for Screen Printers, DTG Operators & Cut-and-Sew Manufacturers'}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors"
             >
-              Close
+              {lang === 'sq' ? 'Mbyll' : 'Close'}
             </button>
             <button
               onClick={handleDownloadTechPack}
@@ -134,7 +156,7 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({
               className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-colors"
             >
               <Download className="w-4 h-4" />
-              <span>Download Tech Pack (PNG)</span>
+              <span>{lang === 'sq' ? 'Shkarko Fletën Teknike (PNG)' : 'Download Tech Pack (PNG)'}</span>
             </button>
           </div>
         </div>

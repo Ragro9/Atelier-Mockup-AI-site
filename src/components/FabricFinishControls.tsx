@@ -1,70 +1,92 @@
 import React from 'react';
 import { PlacementConfig, PrintFinish } from '../types';
 import {
-  Sparkles,
-  Layers,
-  Wand2,
+  Flame,
   Waves,
   Sun,
-  ShieldCheck,
-  Flame,
   Shirt,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from '../locales/translations';
 
 interface FabricFinishControlsProps {
   placement: PlacementConfig;
   onChange: (newPlacement: PlacementConfig) => void;
   is2DMode: boolean;
   onToggle2DMode: () => void;
+  lang: Language;
 }
 
-const PRINT_FINISH_OPTIONS: {
+const PRINT_FINISH_DATA: {
   finish: PrintFinish;
-  label: string;
-  badge: string;
-  desc: string;
+  labelSq: string;
+  badgeSq: string;
+  descSq: string;
+  labelEn: string;
+  badgeEn: string;
+  descEn: string;
 }[] = [
   {
     finish: 'Screen Print Matte',
-    label: 'Screen Print Matte',
-    badge: 'Industry Standard',
-    desc: 'Opaque soft ink permanently bound to cotton with subtle fabric weave show-through.',
+    labelSq: 'Sitotip Mat (Screen Print)',
+    badgeSq: 'Standardi i Industrisë',
+    descSq: 'Bojë e butë që lidhet përgjithmonë me pambukun me thurje të dukshme të pëlhurës.',
+    labelEn: 'Screen Print Matte',
+    badgeEn: 'Industry Standard',
+    descEn: 'Opaque soft ink permanently bound to cotton with subtle fabric weave show-through.',
   },
   {
     finish: 'Direct-to-Garment [DTG]',
-    label: 'Direct-to-Garment [DTG]',
-    badge: 'Softest Hand',
-    desc: 'Water-based pigment absorbed directly into fabric fibers, perfectly following wrinkles.',
+    labelSq: 'Printim Digjital Direkt në Pëlhurë [DTG]',
+    badgeSq: 'Bojë e Butë Ujore',
+    descSq: 'Pigment me bazë uji i absorbuar direkt në fijet e pëlhurës, që ndjek çdo rrudhë.',
+    labelEn: 'Direct-to-Garment [DTG]',
+    badgeEn: 'Softest Hand',
+    descEn: 'Water-based pigment absorbed directly into fabric fibers, perfectly following wrinkles.',
   },
   {
     finish: 'Vintage Distressed',
-    label: 'Vintage Distressed / Wash',
-    badge: 'Worn Aesthetic',
-    desc: 'Cracked, micro-weathered print surface mimicking 50+ vintage wash cycles.',
+    labelSq: 'Efekt Vintage i Larë / i Plakur',
+    badgeSq: 'Stil Retro',
+    descSq: 'Sipërfaqe e krisur dhe e zbardhur që imiton 50+ larje të veshjes vintage.',
+    labelEn: 'Vintage Distressed / Wash',
+    badgeEn: 'Worn Aesthetic',
+    descEn: 'Cracked, micro-weathered print surface mimicking 50+ vintage wash cycles.',
   },
   {
     finish: 'High-Gloss Plastisol',
-    label: 'High-Gloss Plastisol',
-    badge: 'Specular Sheen',
-    desc: 'Heavyweight rubberized ink with ambient light specular highlights and smooth finish.',
+    labelSq: 'Plastisol me Shkëlqim të Lartë',
+    badgeSq: 'Shkëlqim Plastik',
+    descSq: 'Bojë gome e rëndë me shkëlqim dhe reflektim të dritave të studios.',
+    labelEn: 'High-Gloss Plastisol',
+    badgeEn: 'Specular Sheen',
+    descEn: 'Heavyweight rubberized ink with ambient light specular highlights and smooth finish.',
   },
   {
     finish: 'Raised 3D Embroidery',
-    label: 'Raised 3D Embroidery',
-    badge: 'Tactile Thread',
-    desc: 'Embossed thread stitches, satin borders, and physical cast micro-shadows.',
+    labelSq: 'Qëndisje me Reliev 3D (Brodurë)',
+    badgeSq: 'Fije me Prekje',
+    descSq: 'Qepje e ngritur me fije mëndafshi, kufij sateni dhe hije reale mikroskopike.',
+    labelEn: 'Raised 3D Embroidery',
+    badgeEn: 'Tactile Thread',
+    descEn: 'Embossed thread stitches, satin borders, and physical cast micro-shadows.',
   },
   {
     finish: 'Metallic Gold Foil',
-    label: 'Metallic Gold Foil',
-    badge: 'Reflective Luxury',
-    desc: 'Heat-pressed metallic foil with dynamic gold luster catching directional studio lights.',
+    labelSq: 'Fletë Ari Metalike e Shndritshme',
+    badgeSq: 'Luksoze',
+    descSq: 'Fletë metalike e ngjeshur me nxehtësi që reflekton dritat e studios si ar i vërtetë.',
+    labelEn: 'Metallic Gold Foil',
+    badgeEn: 'Reflective Luxury',
+    descEn: 'Heat-pressed metallic foil with dynamic gold luster catching directional studio lights.',
   },
   {
     finish: 'Reflective 3M Transfer',
-    label: 'Reflective 3M Transfer',
-    badge: 'Technical Outerwear',
-    desc: 'High-visibility retroreflective micro-bead vinyl with silver studio flash response.',
+    labelSq: 'Material Reflektues 3M',
+    badgeSq: 'Reflektim Sigurie',
+    descSq: 'Vinil me mikro-rruaza xhami me reflektim të lartë ndaj dritës ose flashit.',
+    labelEn: 'Reflective 3M Transfer',
+    badgeEn: 'Technical Outerwear',
+    descEn: 'High-visibility retroreflective micro-bead vinyl with silver studio flash response.',
   },
 ];
 
@@ -73,7 +95,10 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
   onChange,
   is2DMode,
   onToggle2DMode,
+  lang,
 }) => {
+  const t = TRANSLATIONS[lang];
+
   return (
     <div className="space-y-6 text-zinc-200">
       {/* 2D Flat-Lay Feature Highlight */}
@@ -85,10 +110,10 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
             </span>
             <div>
               <h4 className="text-xs font-bold text-zinc-100">
-                2D Flat-Lay Technical Presentation
+                {t.twoDConversionTitle}
               </h4>
               <p className="text-[11px] text-zinc-400">
-                Converts garments into flat 2D e-commerce catalog line visuals
+                {t.twoDConversionDesc}
               </p>
             </div>
           </div>
@@ -100,7 +125,7 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
                 : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
             }`}
           >
-            {is2DMode ? '2D View Active' : 'Enable 2D Flat-Lay'}
+            {is2DMode ? t.active2DView : t.toggle2DView}
           </button>
         </div>
       </div>
@@ -110,13 +135,17 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-amber-400" />
-            <span>Print Application &amp; Chemistry</span>
+            <span>{t.printChemistryTitle}</span>
           </label>
         </div>
 
         <div className="space-y-2">
-          {PRINT_FINISH_OPTIONS.map((opt) => {
+          {PRINT_FINISH_DATA.map((opt) => {
             const isSelected = placement.printFinish === opt.finish;
+            const label = lang === 'sq' ? opt.labelSq : opt.labelEn;
+            const badge = lang === 'sq' ? opt.badgeSq : opt.badgeEn;
+            const desc = lang === 'sq' ? opt.descSq : opt.descEn;
+
             return (
               <button
                 key={opt.finish}
@@ -129,7 +158,7 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-100">
-                    {opt.label}
+                    {label}
                   </span>
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -138,11 +167,11 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
                         : 'bg-zinc-800 text-zinc-400'
                     }`}
                   >
-                    {opt.badge}
+                    {badge}
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  {opt.desc}
+                  {desc}
                 </p>
               </button>
             );
@@ -155,17 +184,17 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
             <Waves className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Fabric Physics &amp; Displacement Engine</span>
+            <span>{t.fabricPhysicsTitle}</span>
           </label>
           <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">
-            Realtime Shader
+            {t.realtimeShader}
           </span>
         </div>
 
         {/* Wrinkle Displacement Depth */}
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-zinc-300">Wrinkle Contour Displacement</span>
+            <span className="text-zinc-300">{t.wrinkleDisplacement}</span>
             <span className="font-mono text-zinc-400">{placement.displacementStrength}%</span>
           </div>
           <input
@@ -182,14 +211,14 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
             className="w-full accent-cyan-400 cursor-pointer"
           />
           <p className="text-[10px] text-zinc-500 mt-0.5">
-            Warps logo pixels according to the garment's physical cloth folds &amp; wrinkles.
+            {t.wrinkleDesc}
           </p>
         </div>
 
         {/* Knit Weave Texture Bleed */}
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-zinc-300">Textile Weave Texture Show-Through</span>
+            <span className="text-zinc-300">{t.weaveTexture}</span>
             <span className="font-mono text-zinc-400">{placement.weaveTextureStrength}%</span>
           </div>
           <input
@@ -206,7 +235,7 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
             className="w-full accent-cyan-400 cursor-pointer"
           />
           <p className="text-[10px] text-zinc-500 mt-0.5">
-            Preserves physical fabric knit ribbing visibly underneath the graphic ink.
+            {t.weaveDesc}
           </p>
         </div>
 
@@ -215,7 +244,7 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
           <div className="flex items-center justify-between text-[11px] mb-1">
             <span className="text-zinc-300 flex items-center gap-1">
               <Sun className="w-3 h-3 text-amber-400" />
-              <span>Garment Shadow &amp; Highlight Mapping</span>
+              <span>{t.shadowMapping}</span>
             </span>
             <span className="font-mono text-zinc-400">{placement.shadowBleed}%</span>
           </div>
@@ -233,7 +262,7 @@ export const FabricFinishControls: React.FC<FabricFinishControlsProps> = ({
             className="w-full accent-amber-400 cursor-pointer"
           />
           <p className="text-[10px] text-zinc-500 mt-0.5">
-            Casts real garment ambient shadows and highlights directly onto the logo artwork.
+            {t.shadowDesc}
           </p>
         </div>
       </div>

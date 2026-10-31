@@ -5,14 +5,12 @@ import {
   Upload,
   Sparkles,
   Shirt,
-  RotateCcw,
   Palette,
   Check,
   Layers,
   FlipHorizontal,
-  ChevronRight,
-  Maximize,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from '../locales/translations';
 
 interface GarmentSelectorProps {
   currentGarment: GarmentPreset | null;
@@ -27,6 +25,7 @@ interface GarmentSelectorProps {
   onToggle2DMode: () => void;
   onConvertTo2DWithAi: () => void;
   isConverting2D: boolean;
+  lang: Language;
 }
 
 export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
@@ -42,7 +41,9 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
   onToggle2DMode,
   onConvertTo2DWithAi,
   isConverting2D,
+  lang,
 }) => {
+  const t = TRANSLATIONS[lang];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -78,11 +79,11 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
             <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] flex items-center justify-center font-bold">
               1
             </span>
-            <span>Upload Garment (IMAGE 1)</span>
+            <span>{t.uploadGarmentTitle}</span>
           </label>
           {customGarmentImage && (
             <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> Custom Upload Active
+              <Check className="w-3 h-3" /> {t.customUploadActive}
             </span>
           )}
         </div>
@@ -114,10 +115,10 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
             </div>
             <div>
               <p className="text-xs font-semibold text-zinc-200">
-                Click or drag &amp; drop blank clothing image
+                {t.dropGarmentText}
               </p>
               <p className="text-[11px] text-zinc-500 mt-0.5">
-                PNG, JPG, WEBP • Blank t-shirt, hoodie, sweatshirt, jacket
+                {t.dropGarmentHint}
               </p>
             </div>
           </div>
@@ -130,14 +131,14 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
-                2D Flat-Lay Conversion
+                {t.twoDConversionTitle}
               </span>
               <span className="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded font-medium border border-sky-500/30">
-                New
+                2D CAD
               </span>
             </div>
             <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-              Transform any uploaded clothing into a pristine 2D technical flat-lay with uniform catalog lighting.
+              {t.twoDConversionDesc}
             </p>
           </div>
         </div>
@@ -152,7 +153,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>{is2DMode ? '2D Flat-Lay Active' : 'Toggle 2D CAD Flat View'}</span>
+            <span>{is2DMode ? t.active2DView : t.toggle2DView}</span>
           </button>
 
           {customGarmentImage && (
@@ -160,10 +161,10 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
               onClick={onConvertTo2DWithAi}
               disabled={isConverting2D}
               className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-sky-900/60 hover:bg-sky-800/80 text-sky-200 border border-sky-700/60 flex items-center gap-1.5 transition-all"
-              title="Use Gemini AI to flatten uploaded photo into a 2D technical flat"
+              title="Kthe foton e ngarkuar në model 2D teknik me AI"
             >
               <Sparkles className={`w-3.5 h-3.5 ${isConverting2D ? 'animate-spin' : ''}`} />
-              <span>{isConverting2D ? 'Flattening...' : 'AI 2D Flatten'}</span>
+              <span>{isConverting2D ? t.flattening : t.aiFlattenBtn}</span>
             </button>
           )}
         </div>
@@ -172,7 +173,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
       {/* Target Side: Front / Back */}
       <div>
         <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-          Target Side
+          {t.targetSideTitle}
         </label>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -184,7 +185,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
             }`}
           >
             <Shirt className="w-4 h-4" />
-            <span>Front Side</span>
+            <span>{t.frontSide}</span>
           </button>
 
           <button
@@ -196,7 +197,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
             }`}
           >
             <FlipHorizontal className="w-4 h-4" />
-            <span>Back Side</span>
+            <span>{t.backSide}</span>
           </button>
         </div>
       </div>
@@ -205,9 +206,9 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            Studio Blank Garments
+            {t.studioBlanksTitle}
           </label>
-          <span className="text-[11px] text-zinc-500">Curated blanks</span>
+          <span className="text-[11px] text-zinc-500">{t.curatedBlanks}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -261,7 +262,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Palette className="w-3.5 h-3.5 text-zinc-500" />
-              <span>Fabric Colorway</span>
+              <span>{t.fabricColorTitle}</span>
             </label>
             <span className="text-[11px] font-mono text-zinc-400 uppercase">
               {garmentColor}
@@ -303,7 +304,7 @@ export const GarmentSelector: React.FC<GarmentSelectorProps> = ({
                 value={garmentColor}
                 onChange={(e) => onGarmentColorChange(e.target.value)}
                 className="w-7 h-7 rounded-full cursor-pointer opacity-0 absolute inset-0"
-                title="Custom color"
+                title="Ngjyrë e personalizuar"
               />
               <div
                 className="w-7 h-7 rounded-full border border-dashed border-zinc-600 flex items-center justify-center text-[10px] text-zinc-400 hover:border-zinc-400 transition-colors pointer-events-none"

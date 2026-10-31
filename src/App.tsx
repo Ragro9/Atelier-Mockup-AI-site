@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   GarmentPreset,
   LogoPreset,
@@ -10,7 +10,6 @@ import {
   GARMENT_PRESETS,
   LOGO_PRESETS,
   DEFAULT_PLACEMENT,
-  LOCATION_PRESETS,
 } from './constants/presets';
 import { InteractiveCanvas } from './components/InteractiveCanvas';
 import { GarmentSelector } from './components/GarmentSelector';
@@ -20,31 +19,36 @@ import { FabricFinishControls } from './components/FabricFinishControls';
 import { StylistReviewModal } from './components/StylistReviewModal';
 import { TechPackModal } from './components/TechPackModal';
 import { ShareEmbedModal } from './components/ShareEmbedModal';
+import { PublishOnlineModal } from './components/PublishOnlineModal';
 import {
   Shirt,
   Image as ImageIcon,
   Move,
   Flame,
   Sparkles,
-  Layers,
   Share2,
-  FileText,
   AlertCircle,
   CheckCircle2,
-  Download,
+  Rocket,
+  Languages,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from './locales/translations';
 
 export default function App() {
+  // Language State - defaults to Albanian (Shqip) as requested!
+  const [lang, setLang] = useState<Language>('sq');
+  const t = TRANSLATIONS[lang];
+
   // App state
   const [currentGarment, setCurrentGarment] = useState<GarmentPreset | null>(
     GARMENT_PRESETS[0]
   );
   const [customGarmentImage, setCustomGarmentImage] = useState<string | null>(null);
-  const [customGarmentName, setCustomGarmentName] = useState<string>('Custom Garment');
+  const [customGarmentName, setCustomGarmentName] = useState<string>('Veshje e Personalizuar');
 
   const [currentLogo, setCurrentLogo] = useState<LogoPreset | null>(LOGO_PRESETS[0]);
   const [customLogoImage, setCustomLogoImage] = useState<string | null>(null);
-  const [customLogoName, setCustomLogoName] = useState<string>('Custom Logo');
+  const [customLogoName, setCustomLogoName] = useState<string>('Grafikë e Personalizuar');
 
   const [targetSide, setTargetSide] = useState<TargetSide>('Front');
   const [garmentColor, setGarmentColor] = useState<string>('#f5f5f4');
@@ -67,6 +71,7 @@ export default function App() {
   const [isStylistModalOpen, setIsStylistModalOpen] = useState<boolean>(false);
   const [isTechPackModalOpen, setIsTechPackModalOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState<boolean>(false);
 
   // Helper toast notification
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -123,14 +128,19 @@ export default function App() {
     setCurrentGarment(garment);
     setCustomGarmentImage(null);
     setGarmentColor(garment.defaultColor);
-    showToast(`Loaded ${garment.name}`, 'info');
+    showToast(lang === 'sq' ? `U zgjodh: ${garment.name}` : `Loaded ${garment.name}`, 'info');
   };
 
   // Upload Custom Garment (IMAGE 1)
   const handleCustomGarmentUpload = (dataUrl: string, name?: string) => {
     setCustomGarmentImage(dataUrl);
-    setCustomGarmentName(name || 'Custom Garment');
-    showToast('Custom garment image uploaded successfully!', 'success');
+    setCustomGarmentName(name || (lang === 'sq' ? 'Veshje e Ngarkuar' : 'Custom Garment'));
+    showToast(
+      lang === 'sq'
+        ? 'Fotoja e rrobave (IMAZHI 1) u ngarkua me sukses!'
+        : 'Garment image uploaded successfully!',
+      'success'
+    );
   };
 
   // Select Preset Logo
@@ -143,15 +153,23 @@ export default function App() {
       widthInches: logo.defaultWidthInches,
       heightInches: logo.defaultWidthInches,
     }));
-    showToast(`Loaded graphic: ${logo.name}`, 'info');
+    showToast(
+      lang === 'sq' ? `U zgjodh logoja: ${logo.name}` : `Loaded graphic: ${logo.name}`,
+      'info'
+    );
   };
 
   // Upload Custom Logo (IMAGE 2)
   const handleCustomLogoUpload = (dataUrl: string, name?: string) => {
     setCustomLogoImage(dataUrl);
-    setCustomLogoName(name || 'Custom Artwork');
+    setCustomLogoName(name || (lang === 'sq' ? 'Logo e Ngarkuar' : 'Custom Artwork'));
     updateLogoAspectRatio(dataUrl);
-    showToast('Custom logo graphic uploaded successfully!', 'success');
+    showToast(
+      lang === 'sq'
+        ? 'Logoja (IMAZHI 2) u ngarkua me sukses! Tani mund ta zmadhoni/zvogëloni me maus.'
+        : 'Logo graphic uploaded successfully! You can now scale it with mouse.',
+      'success'
+    );
   };
 
   // Invert Logo Colors (White <-> Black)
@@ -178,7 +196,10 @@ export default function App() {
         ctx.putImageData(imgData, 0, 0);
         const inverted = canvas.toDataURL('image/png');
         setCustomLogoImage(inverted);
-        showToast('Logo colors inverted for high contrast.', 'info');
+        showToast(
+          lang === 'sq' ? 'Ngjyrat e logos u përmbysën me sukses.' : 'Logo colors inverted.',
+          'info'
+        );
       }
       setIsProcessingLogo(false);
     };
@@ -204,15 +225,17 @@ export default function App() {
           const r = imgData.data[i];
           const g = imgData.data[i + 1];
           const b = imgData.data[i + 2];
-          // Near white threshold
           if (r > 235 && g > 235 && b > 235) {
-            imgData.data[i + 3] = 0; // make transparent
+            imgData.data[i + 3] = 0;
           }
         }
         ctx.putImageData(imgData, 0, 0);
         const keyed = canvas.toDataURL('image/png');
         setCustomLogoImage(keyed);
-        showToast('White background keyed to transparent.', 'success');
+        showToast(
+          lang === 'sq' ? 'Sfondi i bardhë u fshi me transparencë.' : 'White background keyed.',
+          'success'
+        );
       }
       setIsProcessingLogo(false);
     };
@@ -237,12 +260,17 @@ export default function App() {
       if (data.success && data.imageUrl) {
         setCustomGarmentImage(data.imageUrl);
         setIs2DMode(true);
-        showToast('Clothing transformed into 2D flat-lay technical view!', 'success');
+        showToast(
+          lang === 'sq'
+            ? 'Veshja u transformua në pamje teknike 2D Flat-Lay!'
+            : 'Clothing transformed into 2D flat-lay view!',
+          'success'
+        );
       } else {
-        showToast(data.message || data.error || 'Could not convert garment to 2D.', 'error');
+        showToast(data.message || data.error || 'Nuk mund të konvertohej në 2D.', 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Error converting garment to 2D.', 'error');
+      showToast(err.message || 'Gabim gjatë kthimit në 2D.', 'error');
     } finally {
       setIsConverting2D(false);
     }
@@ -274,15 +302,20 @@ export default function App() {
       const data = await response.json();
       if (data.success && data.imageUrl) {
         setAiMockupResult(data.imageUrl);
-        showToast('Photorealistic studio mockup generated successfully!', 'success');
+        showToast(
+          lang === 'sq'
+            ? 'Maketa fotorealiste me pëlhurë u krijua me sukses me AI!'
+            : 'Photorealistic studio mockup generated successfully!',
+          'success'
+        );
       } else {
         showToast(
-          data.message || data.error || 'Failed to generate studio mockup.',
+          data.message || data.error || (lang === 'sq' ? 'Dështoi gjenerimi me AI.' : 'Failed to generate studio mockup.'),
           'error'
         );
       }
     } catch (err: any) {
-      showToast(err.message || 'Error generating mockup with AI.', 'error');
+      showToast(err.message || 'Gabim gjatë lidhjes me AI.', 'error');
     } finally {
       setIsAiGenerating(false);
     }
@@ -352,20 +385,46 @@ export default function App() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold tracking-tight text-zinc-100">
-                Atelier Studio
+                {t.appTitle}
               </h1>
               <span className="text-[10px] font-semibold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
-                Automated Apparel Mockup
+                {t.appBadge}
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 hidden sm:block">
-              Photorealistic fabric mapping • Dimensional placement specs • 2D flat-lay engine
+              {t.appSubtitle}
             </p>
           </div>
         </div>
 
         {/* Global Quick Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Language Switcher (Shqip / English) */}
+          <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-xs">
+            <button
+              onClick={() => setLang('sq')}
+              className={`px-2 py-1 rounded font-bold transition-all flex items-center gap-1 ${
+                lang === 'sq'
+                  ? 'bg-amber-500 text-zinc-950 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Shqip"
+            >
+              <span>🇦🇱 Shqip</span>
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              className={`px-2 py-1 rounded font-bold transition-all flex items-center gap-1 ${
+                lang === 'en'
+                  ? 'bg-amber-500 text-zinc-950 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="English"
+            >
+              <span>🇬🇧 EN</span>
+            </button>
+          </div>
+
           {/* Target Side Quick Switch */}
           <div className="flex items-center bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-xs">
             <button
@@ -379,7 +438,7 @@ export default function App() {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Front
+              {t.front}
             </button>
             <button
               onClick={() => {
@@ -392,24 +451,35 @@ export default function App() {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Back
+              {t.back}
             </button>
           </div>
+
+          {/* Publish Online Free Button */}
+          <button
+            onClick={() => setIsPublishModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-zinc-950 flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
+            title={t.publishOnline}
+          >
+            <Rocket className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t.publishOnline}</span>
+          </button>
 
           {/* Share & Google Sites Embed */}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 flex items-center gap-1.5 transition-colors"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 flex items-center gap-1.5 transition-colors"
+            title={t.googleSitesEmbed}
           >
             <Share2 className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden md:inline">Google Sites Embed</span>
+            <span className="hidden lg:inline">{t.googleSitesEmbed}</span>
           </button>
         </div>
       </header>
 
       {/* Main Studio Workspace */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left / Center Viewport: Interactive Canvas */}
+        {/* Left / Center Viewport: Interactive Canvas with Mouse Resizing */}
         <div className="flex-1 h-full p-3 lg:p-4 overflow-hidden flex flex-col">
           <InteractiveCanvas
             garmentImageSrc={getGarmentImageSrc()}
@@ -426,6 +496,8 @@ export default function App() {
             onOpenStylistReview={handleRunStylistReview}
             onOpenTechPack={() => setIsTechPackModalOpen(true)}
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenPublishModal={() => setIsPublishModalOpen(true)}
+            lang={lang}
           />
         </div>
 
@@ -442,7 +514,7 @@ export default function App() {
               }`}
             >
               <Shirt className="w-4 h-4" />
-              <span className="text-[11px] truncate">1. Garment</span>
+              <span className="text-[11px] truncate">{t.tabGarment}</span>
             </button>
 
             <button
@@ -454,7 +526,7 @@ export default function App() {
               }`}
             >
               <ImageIcon className="w-4 h-4" />
-              <span className="text-[11px] truncate">2. Logo</span>
+              <span className="text-[11px] truncate">{t.tabLogo}</span>
             </button>
 
             <button
@@ -466,7 +538,7 @@ export default function App() {
               }`}
             >
               <Move className="w-4 h-4" />
-              <span className="text-[11px] truncate">3. Placement</span>
+              <span className="text-[11px] truncate">{t.tabPlacement}</span>
             </button>
 
             <button
@@ -478,7 +550,7 @@ export default function App() {
               }`}
             >
               <Flame className="w-4 h-4" />
-              <span className="text-[11px] truncate">4. Fabric</span>
+              <span className="text-[11px] truncate">{t.tabFabric}</span>
             </button>
           </div>
 
@@ -501,6 +573,7 @@ export default function App() {
                 onToggle2DMode={() => setIs2DMode(!is2DMode)}
                 onConvertTo2DWithAi={handleConvertTo2DWithAi}
                 isConverting2D={isConverting2D}
+                lang={lang}
               />
             )}
 
@@ -513,6 +586,7 @@ export default function App() {
                 onInvertLogoColors={handleInvertLogoColors}
                 onRemoveLogoBackground={handleRemoveLogoBackground}
                 isProcessingLogo={isProcessingLogo}
+                lang={lang}
               />
             )}
 
@@ -525,6 +599,7 @@ export default function App() {
                   setTargetSide(side);
                   setPlacement((p) => ({ ...p, targetSide: side }));
                 }}
+                lang={lang}
               />
             )}
 
@@ -534,6 +609,7 @@ export default function App() {
                 onChange={setPlacement}
                 is2DMode={is2DMode}
                 onToggle2DMode={() => setIs2DMode(!is2DMode)}
+                lang={lang}
               />
             )}
           </div>
@@ -551,7 +627,7 @@ export default function App() {
             >
               <Sparkles className={`w-4 h-4 ${isAiGenerating ? 'animate-spin' : ''}`} />
               <span>
-                {isAiGenerating ? 'Synthesizing Studio Mockup...' : 'Generate Studio Mockup (AI)'}
+                {isAiGenerating ? t.generating : t.generateAiMockup}
               </span>
             </button>
           </div>
@@ -567,6 +643,7 @@ export default function App() {
         onRefreshReview={handleRunStylistReview}
         garmentName={currentGarment?.name || customGarmentName}
         placementLocation={placement.location}
+        lang={lang}
       />
 
       <TechPackModal
@@ -576,12 +653,20 @@ export default function App() {
         garmentName={currentGarment?.name || customGarmentName}
         placement={placement}
         garmentColor={garmentColor}
+        lang={lang}
       />
 
       <ShareEmbedModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         appUrl={window.location.origin}
+        lang={lang}
+      />
+
+      <PublishOnlineModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        lang={lang}
       />
     </div>
   );

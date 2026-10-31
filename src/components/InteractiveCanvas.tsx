@@ -1,12 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import {
-  PlacementConfig,
-  GarmentPreset,
-  TargetSide,
-} from '../types';
+import { PlacementConfig, GarmentPreset, TargetSide } from '../types';
 import { renderFabricMockup } from '../utils/fabricShaders';
 import {
-  Maximize2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -15,11 +10,12 @@ import {
   Eye,
   Sliders,
   Layers,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
   Share2,
+  Rocket,
+  Move,
+  Maximize2,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from '../locales/translations';
 
 interface InteractiveCanvasProps {
   garmentImageSrc: string;
@@ -36,7 +32,11 @@ interface InteractiveCanvasProps {
   onOpenStylistReview: () => void;
   onOpenTechPack: () => void;
   onOpenShareModal: () => void;
+  onOpenPublishModal: () => void;
+  lang: Language;
 }
+
+type DragMode = 'none' | 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se';
 
 export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
   garmentImageSrc,
@@ -53,21 +53,40 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
   onOpenStylistReview,
   onOpenTechPack,
   onOpenShareModal,
+  onOpenPublishModal,
+  lang,
 }) => {
+  const t = TRANSLATIONS[lang];
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showRulers, setShowRulers] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'interactive' | 'ai' | 'compare'>('interactive');
   const [compareSlider, setCompareSlider] = useState<number>(50);
+  const [cursorStyle, setCursorStyle] = useState<string>('default');
 
-  // Dragging state
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; initPosX: number; initPosY: number }>({
-    mouseX: 0,
-    mouseY: 0,
+  // Dragging and Resizing state
+  const dragModeRef = useRef<DragMode>('none');
+  const dragStartRef = useRef<{
+    clientX: number;
+    clientY: number;
+    initPosX: number;
+    initPosY: number;
+    initWidthInches: number;
+    initHeightInches: number;
+    centerXCanvas: number;
+    centerYCanvas: number;
+    startDistFromCenter: number;
+  }>({
+    clientX: 0,
+    clientY: 0,
     initPosX: 50,
     initPosY: 50,
+    initWidthInches: 10,
+    initHeightInches: 10,
+    centerXCanvas: 600,
+    centerYCanvas: 750,
+    startDistFromCenter: 100,
   });
 
   // Cached image elements
@@ -145,70 +164,212 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
     }
   }, [imagesLoaded, updateCanvas]);
 
-  // Handle direct mouse / touch drag on canvas
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (viewMode === 'ai') return;
-    isDraggingRef.current = true;
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      initPosX: placement.posX,
-      initPosY: placement.posY,
+  // Helper to get logo bounding coordinates in canvas pixel space (1200x1500)
+  const getLogoCanvasCoords = () => {
+    const canvasW = 1200;
+    const canvasH = 1500;
+    const chestRefWidthInches = currentGarment?.chestWidthInches || 22;
+    const pixelsPerInch = (canvasW * 0.45) / chestRefWidthInches;
+
+    const logoW = placement.widthInches * pixelsPerInch;
+    const logoH = placement.heightInches * pixelsPerInch;
+    const cx = (placement.posX / 100) * canvasW;
+    const cy = (placement.posY / 100) * canvasH;
+
+    return {
+      cx,
+      cy,
+      logoW,
+      logoH,
+      left: cx - logoW / 2,
+      right: cx + logoW / 2,
+      top: cy - logoH / 2,
+      bottom: cy + logoH / 2,
     };
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || !canvasRef.current) return;
-
+  // Convert mouse client coordinates to canvas (1200x1500) coordinates
+  const clientToCanvasCoords = (clientX: number, clientY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const deltaX = ((e.clientX - dragStartRef.current.mouseX) / rect.width) * 100;
-    const deltaY = ((e.clientY - dragStartRef.current.mouseY) / rect.height) * 100;
+    const scaleX = 1200 / rect.width;
+    const scaleY = 1500 / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
 
-    const newX = Math.max(10, Math.min(90, dragStartRef.current.initPosX + deltaX));
-    const newY = Math.max(10, Math.min(90, dragStartRef.current.initPosY + deltaY));
+  // Hit-testing corner handles or interior
+  const getHitTarget = (clientX: number, clientY: number): DragMode => {
+    const { x, y } = clientToCanvasCoords(clientX, clientY);
+    const { left, right, top, bottom } = getLogoCanvasCoords();
+    const handleThreshold = 35; // canvas pixel distance for corner grab
 
-    onPlacementChange({
-      ...placement,
-      location: 'Custom',
-      posX: Number(newX.toFixed(1)),
-      posY: Number(newY.toFixed(1)),
-    });
+    const distNW = Math.hypot(x - left, y - top);
+    if (distNW <= handleThreshold) return 'resize-nw';
+
+    const distNE = Math.hypot(x - right, y - top);
+    if (distNE <= handleThreshold) return 'resize-ne';
+
+    const distSW = Math.hypot(x - left, y - bottom);
+    if (distSW <= handleThreshold) return 'resize-sw';
+
+    const distSE = Math.hypot(x - right, y - bottom);
+    if (distSE <= handleThreshold) return 'resize-se';
+
+    if (x >= left - 5 && x <= right + 5 && y >= top - 5 && y <= bottom + 5) {
+      return 'move';
+    }
+
+    return 'none';
+  };
+
+  // Handle Mouse Over / Hover cursor style
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (viewMode === 'ai') return;
+
+    if (dragModeRef.current !== 'none') {
+      handleDrag(e.clientX, e.clientY);
+      return;
+    }
+
+    const hit = getHitTarget(e.clientX, e.clientY);
+    if (hit === 'resize-nw' || hit === 'resize-se') {
+      setCursorStyle('nwse-resize');
+    } else if (hit === 'resize-ne' || hit === 'resize-sw') {
+      setCursorStyle('nesw-resize');
+    } else if (hit === 'move') {
+      setCursorStyle('move');
+    } else {
+      setCursorStyle('default');
+    }
+  };
+
+  // Handle Mouse Down
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (viewMode === 'ai') return;
+    const hit = getHitTarget(e.clientX, e.clientY);
+    if (hit === 'none') return;
+
+    const { x, y } = clientToCanvasCoords(e.clientX, e.clientY);
+    const { cx, cy } = getLogoCanvasCoords();
+    const startDist = Math.max(10, Math.hypot(x - cx, y - cy));
+
+    dragModeRef.current = hit;
+    dragStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      initPosX: placement.posX,
+      initPosY: placement.posY,
+      initWidthInches: placement.widthInches,
+      initHeightInches: placement.heightInches,
+      centerXCanvas: cx,
+      centerYCanvas: cy,
+      startDistFromCenter: startDist,
+    };
+  };
+
+  // Core Drag Logic (Move or Resize)
+  const handleDrag = (clientX: number, clientY: number) => {
+    if (dragModeRef.current === 'none' || !canvasRef.current) return;
+
+    if (dragModeRef.current === 'move') {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const deltaX = ((clientX - dragStartRef.current.clientX) / rect.width) * 100;
+      const deltaY = ((clientY - dragStartRef.current.clientY) / rect.height) * 100;
+
+      const newX = Math.max(10, Math.min(90, dragStartRef.current.initPosX + deltaX));
+      const newY = Math.max(10, Math.min(90, dragStartRef.current.initPosY + deltaY));
+
+      onPlacementChange({
+        ...placement,
+        location: 'Custom',
+        posX: Number(newX.toFixed(1)),
+        posY: Number(newY.toFixed(1)),
+      });
+    } else {
+      // Corner Resize mode
+      const { x, y } = clientToCanvasCoords(clientX, clientY);
+      const cx = dragStartRef.current.centerXCanvas;
+      const cy = dragStartRef.current.centerYCanvas;
+      const currentDist = Math.max(15, Math.hypot(x - cx, y - cy));
+      const scaleMultiplier = currentDist / dragStartRef.current.startDistFromCenter;
+
+      let newWidthInches = dragStartRef.current.initWidthInches * scaleMultiplier;
+      newWidthInches = Math.max(1, Math.min(22, newWidthInches));
+
+      let newHeightInches = placement.lockAspectRatio
+        ? Number((newWidthInches / (placement.aspectRatio || 1)).toFixed(2))
+        : Math.max(1, Math.min(24, dragStartRef.current.initHeightInches * scaleMultiplier));
+
+      onPlacementChange({
+        ...placement,
+        location: 'Custom',
+        widthInches: Number(newWidthInches.toFixed(2)),
+        heightInches: Number(newHeightInches.toFixed(2)),
+      });
+    }
   };
 
   const handleMouseUp = () => {
-    isDraggingRef.current = false;
+    dragModeRef.current = 'none';
   };
 
-  // Touch handlers
+  // Mouse Wheel (Scroll) on canvas over logo to scale up or down
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (viewMode === 'ai') return;
+    const hit = getHitTarget(e.clientX, e.clientY);
+    if (hit !== 'none') {
+      e.preventDefault();
+      // Scroll up = bigger (+0.5 cm / ~0.2 in), Scroll down = smaller (-0.5 cm)
+      const stepInches = 0.2;
+      const delta = e.deltaY < 0 ? stepInches : -stepInches;
+      let newW = Math.max(1, Math.min(22, placement.widthInches + delta));
+      let newH = placement.lockAspectRatio
+        ? Number((newW / (placement.aspectRatio || 1)).toFixed(2))
+        : Math.max(1, Math.min(24, placement.heightInches + delta));
+
+      onPlacementChange({
+        ...placement,
+        location: 'Custom',
+        widthInches: Number(newW.toFixed(2)),
+        heightInches: Number(newH.toFixed(2)),
+      });
+    }
+  };
+
+  // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (viewMode === 'ai' || e.touches.length !== 1) return;
-    isDraggingRef.current = true;
+    const touch = e.touches[0];
+    const hit = getHitTarget(touch.clientX, touch.clientY);
+    if (hit === 'none') return;
+
+    const { x, y } = clientToCanvasCoords(touch.clientX, touch.clientY);
+    const { cx, cy } = getLogoCanvasCoords();
+    const startDist = Math.max(10, Math.hypot(x - cx, y - cy));
+
+    dragModeRef.current = hit;
     dragStartRef.current = {
-      mouseX: e.touches[0].clientX,
-      mouseY: e.touches[0].clientY,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
       initPosX: placement.posX,
       initPosY: placement.posY,
+      initWidthInches: placement.widthInches,
+      initHeightInches: placement.heightInches,
+      centerXCanvas: cx,
+      centerYCanvas: cy,
+      startDistFromCenter: startDist,
     };
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || !canvasRef.current || e.touches.length !== 1) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const deltaX = ((e.touches[0].clientX - dragStartRef.current.mouseX) / rect.width) * 100;
-    const deltaY = ((e.touches[0].clientY - dragStartRef.current.mouseY) / rect.height) * 100;
-
-    const newX = Math.max(10, Math.min(90, dragStartRef.current.initPosX + deltaX));
-    const newY = Math.max(10, Math.min(90, dragStartRef.current.initPosY + deltaY));
-
-    onPlacementChange({
-      ...placement,
-      location: 'Custom',
-      posX: Number(newX.toFixed(1)),
-      posY: Number(newY.toFixed(1)),
-    });
+    if (dragModeRef.current === 'none' || e.touches.length !== 1) return;
+    handleDrag(e.touches[0].clientX, e.touches[0].clientY);
   };
 
-  // Quick download current rendered canvas
+  // Download handlers
   const handleDownloadInteractive = () => {
     if (!canvasRef.current) return;
     const link = document.createElement('a');
@@ -225,6 +386,9 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
     link.click();
   };
 
+  const widthCm = (placement.widthInches * 2.54).toFixed(1);
+  const heightCm = (placement.heightInches * 2.54).toFixed(1);
+
   return (
     <div className="relative flex flex-col h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden border border-zinc-800/80 rounded-2xl shadow-2xl">
       {/* Studio Header Toolbar */}
@@ -240,7 +404,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Interactive Fabric Mesh</span>
+            <span>{t.interactiveMesh}</span>
           </button>
 
           {aiMockupResult && (
@@ -254,7 +418,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>AI Photorealistic Mockup</span>
+                <span>{t.aiMockup}</span>
               </button>
 
               <button
@@ -266,7 +430,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Split Compare</span>
+                <span>{t.splitCompare}</span>
               </button>
             </>
           )}
@@ -277,7 +441,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
           {/* 2D Flat-Lay Mode Switch */}
           <button
             onClick={onToggle2DMode}
-            title="Convert and modify clothing to look 2D flat-lay"
+            title={lang === 'sq' ? 'Kthe rrobat në pamje 2D të rrafshët' : 'Convert and modify clothing to look 2D flat-lay'}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg flex items-center gap-1.5 transition-all border ${
               is2DMode
                 ? 'bg-sky-500/20 text-sky-300 border-sky-500/50 shadow-sm'
@@ -285,11 +449,11 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-            <span>2D Flat-Lay CAD Mode</span>
+            <span>{t.flatLayCad}</span>
             {is2DMode && <span className="text-[10px] bg-sky-500/30 px-1 rounded">ON</span>}
           </button>
 
-          {/* Rulers / Dimension Guides */}
+          {/* Rulers / Dimension Guides in CM */}
           <button
             onClick={() => setShowRulers(!showRulers)}
             className={`px-2.5 py-1.5 text-xs rounded-lg flex items-center gap-1 transition-all border ${
@@ -299,26 +463,35 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Rulers</span>
+            <span>{t.rulers}</span>
           </button>
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           <button
+            onClick={onOpenPublishModal}
+            className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-lg flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
+            title={t.publishOnline}
+          >
+            <Rocket className="w-3.5 h-3.5" />
+            <span>{t.publishOnline}</span>
+          </button>
+
+          <button
             onClick={onOpenStylistReview}
-            className="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors hidden sm:flex"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Fashion Stylist</span>
+            <span>{t.fashionStylist}</span>
           </button>
 
           <button
             onClick={onOpenTechPack}
-            className="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors hidden md:flex"
           >
             <Layers className="w-3.5 h-3.5 text-blue-400" />
-            <span>Tech Pack Spec</span>
+            <span>{t.techPack}</span>
           </button>
 
           {/* AI Generation Trigger */}
@@ -332,14 +505,14 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             }`}
           >
             <Sparkles className={`w-3.5 h-3.5 ${isAiGenerating ? 'animate-spin' : ''}`} />
-            <span>{isAiGenerating ? 'Generating Studio Mockup...' : 'Generate AI Mockup'}</span>
+            <span>{isAiGenerating ? t.generating : t.generateAiMockup}</span>
           </button>
 
           {/* Download & Share */}
           <button
             onClick={viewMode === 'ai' ? handleDownloadAiImage : handleDownloadInteractive}
             className="p-1.5 text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
-            title="Download high-resolution image"
+            title={t.download}
           >
             <Download className="w-4 h-4" />
           </button>
@@ -347,7 +520,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
           <button
             onClick={onOpenShareModal}
             className="p-1.5 text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
-            title="Share / Google Sites Embed"
+            title={t.share}
           >
             <Share2 className="w-4 h-4" />
           </button>
@@ -379,17 +552,19 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             <canvas
               ref={canvasRef}
               onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
+              onMouseMove={handleCanvasMouseMove}
+              onWheel={handleWheel}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUp}
-              className="max-h-[75vh] w-auto max-w-full object-contain cursor-grab active:cursor-grabbing rounded-xl shadow-2xl border border-zinc-800/60 transition-shadow hover:shadow-amber-500/5"
+              style={{ cursor: cursorStyle }}
+              className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-zinc-800/60 transition-shadow hover:shadow-amber-500/5"
             />
 
-            {/* Drag helper hint badge */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-[11px] text-zinc-300 shadow-lg pointer-events-none flex items-center gap-1.5 backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span>Click &amp; drag anywhere on garment to reposition logo</span>
+            {/* Drag & Resize helper hint badge */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-zinc-900/95 border border-zinc-700/80 text-[11px] text-zinc-200 shadow-xl pointer-events-none flex items-center gap-2 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>{t.dragCanvasTip}</span>
             </div>
           </div>
         )}
@@ -407,7 +582,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             />
             <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-indigo-950/90 border border-indigo-500/40 text-xs font-semibold text-indigo-300 backdrop-blur-md shadow-lg flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Gemini Studio Commercial Mockup</span>
+              <span>{t.geminiStudioMockup}</span>
             </div>
           </div>
         )}
@@ -423,12 +598,9 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
               className="absolute inset-0 overflow-hidden"
               style={{ clipPath: `inset(0 ${100 - compareSlider}% 0 0)` }}
             >
-              <canvas
-                ref={canvasRef}
-                className="w-full h-full object-contain"
-              />
+              <canvas ref={canvasRef} className="w-full h-full object-contain" />
               <span className="absolute top-4 left-4 bg-zinc-900/90 text-amber-300 text-xs font-semibold px-2.5 py-1 rounded border border-zinc-700 backdrop-blur-sm">
-                Interactive Mesh
+                {t.interactiveMesh}
               </span>
             </div>
 
@@ -437,13 +609,9 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
               className="absolute inset-0 overflow-hidden"
               style={{ clipPath: `inset(0 0 0 ${compareSlider}%)` }}
             >
-              <img
-                src={aiMockupResult}
-                alt="AI Result"
-                className="w-full h-full object-contain"
-              />
+              <img src={aiMockupResult} alt="AI Result" className="w-full h-full object-contain" />
               <span className="absolute top-4 right-4 bg-indigo-950/90 text-indigo-300 text-xs font-semibold px-2.5 py-1 rounded border border-indigo-600/50 backdrop-blur-sm">
-                AI Commercial Studio
+                {t.aiMockup}
               </span>
             </div>
 
@@ -476,10 +644,12 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
             </div>
             <div className="text-center max-w-sm px-4">
               <h3 className="text-base font-bold text-zinc-100 mb-1">
-                Compositing Commercial Apparel Mockup...
+                {t.synthesizingMockup}
               </h3>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Analyzing fabric drape, mapping knit ribbing, warping ink across wrinkle contours, and casting studio ambient lighting.
+                {lang === 'sq'
+                  ? 'Duke analizuar rrudhat e pëlhurës, thurjen e pambukut dhe ndriçimin komercial të studios.'
+                  : 'Analyzing fabric drape, mapping knit ribbing, warping ink across wrinkle contours, and casting studio ambient lighting.'}
               </p>
             </div>
           </div>
@@ -490,7 +660,7 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
           <button
             onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.15))}
             className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
-            title="Zoom out"
+            title="Zvogëlo"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -500,43 +670,42 @@ export const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
           <button
             onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.15))}
             className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
-            title="Zoom in"
+            title="Zmadho"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => setZoomLevel(1)}
             className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
-            title="Reset Zoom"
+            title="Rivendos"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Live Placement Specs Overlay Badge (Top Left) */}
+        {/* Live Placement Specs Overlay Badge in Centimeters (Top Left) */}
         <div className="absolute top-4 left-4 bg-zinc-900/90 backdrop-blur-md border border-zinc-800/80 rounded-xl p-3 shadow-xl max-w-xs text-xs pointer-events-none hidden md:block">
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-1.5 gap-2">
             <span className="font-semibold text-zinc-200">
-              {placement.targetSide} View • {placement.location}
+              {placement.targetSide === 'Front' ? t.front : t.back} •{' '}
+              {t.locations[placement.location] || placement.location}
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono border border-amber-500/20">
-              {placement.printFinish}
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono border border-amber-500/20 truncate">
+              {t.finishes[placement.printFinish] || placement.printFinish}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-zinc-400 font-mono text-[11px]">
             <div>
-              Width: <span className="text-zinc-200">{placement.widthInches.toFixed(1)}"</span>
-              <span className="text-zinc-500 ml-1">({(placement.widthInches * 2.54).toFixed(1)} cm)</span>
+              {t.widthLabel}: <span className="text-emerald-400 font-bold">{widthCm} cm</span>
             </div>
             <div>
-              Height: <span className="text-zinc-200">{placement.heightInches.toFixed(1)}"</span>
-              <span className="text-zinc-500 ml-1">({(placement.heightInches * 2.54).toFixed(1)} cm)</span>
+              {t.heightLabel}: <span className="text-emerald-400 font-bold">{heightCm} cm</span>
             </div>
             <div>
-              Center X: <span className="text-zinc-200">{placement.posX.toFixed(1)}%</span>
+              X: <span className="text-zinc-200">{placement.posX.toFixed(1)}%</span>
             </div>
             <div>
-              Drop Y: <span className="text-zinc-200">{placement.posY.toFixed(1)}%</span>
+              Y: <span className="text-zinc-200">{placement.posY.toFixed(1)}%</span>
             </div>
           </div>
         </div>

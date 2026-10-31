@@ -6,19 +6,19 @@ import {
   Lock,
   Unlock,
   RotateCw,
-  Sliders,
   Move,
   Maximize2,
-  Minimize2,
   RefreshCw,
-  Compass,
+  MousePointer,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from '../locales/translations';
 
 interface PlacementControlsProps {
   placement: PlacementConfig;
   onChange: (newPlacement: PlacementConfig) => void;
   targetSide: TargetSide;
   onTargetSideChange: (side: TargetSide) => void;
+  lang: Language;
 }
 
 export const PlacementControls: React.FC<PlacementControlsProps> = ({
@@ -26,7 +26,17 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
   onChange,
   targetSide,
   onTargetSideChange,
+  lang,
 }) => {
+  const t = TRANSLATIONS[lang];
+
+  // Convert cm to inches
+  const cmToInches = (cm: number) => cm / 2.54;
+  const inchesToCm = (inches: number) => inches * 2.54;
+
+  const currentWidthCm = Number(inchesToCm(placement.widthInches).toFixed(1));
+  const currentHeightCm = Number(inchesToCm(placement.heightInches).toFixed(1));
+
   // Handle Location Preset Selection
   const handleSelectLocation = (loc: PlacementLocation) => {
     const preset = LOCATION_PRESETS[loc];
@@ -38,7 +48,7 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
 
     const newW = preset.widthInches;
     const newH = placement.lockAspectRatio
-      ? Number((newW / (placement.aspectRatio || 1)).toFixed(1))
+      ? Number((newW / (placement.aspectRatio || 1)).toFixed(2))
       : preset.heightInches;
 
     onChange({
@@ -52,37 +62,39 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
     });
   };
 
-  // Handle Width change in inches
-  const handleWidthChange = (wIn: number) => {
-    const safeW = Math.max(1, Math.min(22, wIn));
-    let safeH = placement.heightInches;
+  // Handle Width change in Centimeters
+  const handleWidthCmChange = (cm: number) => {
+    const safeCm = Math.max(2, Math.min(56, cm));
+    const newWidthInches = cmToInches(safeCm);
+    let newHeightInches = placement.heightInches;
     if (placement.lockAspectRatio) {
-      safeH = Number((safeW / (placement.aspectRatio || 1)).toFixed(2));
+      newHeightInches = Number((newWidthInches / (placement.aspectRatio || 1)).toFixed(2));
     }
     onChange({
       ...placement,
       location: 'Custom',
-      widthInches: safeW,
-      heightInches: safeH,
+      widthInches: Number(newWidthInches.toFixed(2)),
+      heightInches: Number(newHeightInches.toFixed(2)),
     });
   };
 
-  // Handle Height change in inches
-  const handleHeightChange = (hIn: number) => {
-    const safeH = Math.max(1, Math.min(24, hIn));
-    let safeW = placement.widthInches;
+  // Handle Height change in Centimeters
+  const handleHeightCmChange = (cm: number) => {
+    const safeCm = Math.max(2, Math.min(60, cm));
+    const newHeightInches = cmToInches(safeCm);
+    let newWidthInches = placement.widthInches;
     if (placement.lockAspectRatio) {
-      safeW = Number((safeH * (placement.aspectRatio || 1)).toFixed(2));
+      newWidthInches = Number((newHeightInches * (placement.aspectRatio || 1)).toFixed(2));
     }
     onChange({
       ...placement,
       location: 'Custom',
-      heightInches: safeH,
-      widthInches: safeW,
+      heightInches: Number(newHeightInches.toFixed(2)),
+      widthInches: Number(newWidthInches.toFixed(2)),
     });
   };
 
-  // Reset to default
+  // Reset to default center
   const handleResetToCenter = () => {
     handleSelectLocation(
       targetSide === 'Front' ? 'Center chest' : 'Upper center between shoulder blades'
@@ -91,15 +103,112 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
 
   return (
     <div className="space-y-6 text-zinc-200">
+      {/* Mouse Resize Highlight Tip */}
+      <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-zinc-900 to-zinc-900 border border-amber-500/30 flex items-start gap-2.5">
+        <MousePointer className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+        <p className="text-xs text-amber-200/90 leading-relaxed font-medium">
+          {t.mouseResizeTip}
+        </p>
+      </div>
+
+      {/* Scale & Dimensions in Centimeters (cm) */}
+      <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+            <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+            <span>{t.logoDimensionsTitle}</span>
+          </label>
+          <button
+            onClick={() =>
+              onChange({
+                ...placement,
+                lockAspectRatio: !placement.lockAspectRatio,
+              })
+            }
+            className={`p-1.5 rounded-lg border text-xs flex items-center gap-1 transition-colors ${
+              placement.lockAspectRatio
+                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+            }`}
+            title={t.ratioLock}
+          >
+            {placement.lockAspectRatio ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+            <span className="text-[10px]">{t.ratioLock}</span>
+          </button>
+        </div>
+
+        {/* Width & Height Inputs in CM */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] text-zinc-300 font-medium block mb-1">
+              {t.widthCm}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.5"
+                min="2"
+                max="56"
+                value={currentWidthCm}
+                onChange={(e) => handleWidthCmChange(parseFloat(e.target.value) || 2)}
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-emerald-400 font-bold font-mono"
+              />
+              <span className="absolute right-3 top-2 text-xs text-zinc-500 font-mono">
+                cm
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-zinc-300 font-medium block mb-1">
+              {t.heightCm}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.5"
+                min="2"
+                max="60"
+                value={currentHeightCm}
+                onChange={(e) => handleHeightCmChange(parseFloat(e.target.value) || 2)}
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-emerald-400 font-bold font-mono"
+              />
+              <span className="absolute right-3 top-2 text-xs text-zinc-500 font-mono">
+                cm
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Size Preset Chips in CM */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <span className="text-[10px] text-zinc-500">{t.quickScale}</span>
+          {[
+            { label: t.pocketSize, cm: 9 },
+            { label: t.mediumSize, cm: 20 },
+            { label: t.standardSize, cm: 26 },
+            { label: t.oversizedSize, cm: 33 },
+          ].map((chip) => (
+            <button
+              key={chip.label}
+              onClick={() => handleWidthCmChange(chip.cm)}
+              className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded-md transition-colors border border-zinc-700/60"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Precise Location Presets */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-amber-400" />
-            <span>Precise Location Preset</span>
+            <span>{t.presetLocationTitle}</span>
           </label>
           <span className="text-[11px] text-zinc-500 font-mono">
-            {placement.location}
+            {t.locations[placement.location] || placement.location}
           </span>
         </div>
 
@@ -109,7 +218,8 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
             .map((loc) => {
               const preset = LOCATION_PRESETS[loc];
               const isSelected = placement.location === loc;
-              const matchesSide = preset.side === targetSide;
+              const locWcm = (preset.widthInches * 2.54).toFixed(0);
+              const locHcm = (preset.heightInches * 2.54).toFixed(0);
 
               return (
                 <button
@@ -124,7 +234,7 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
                   <div className="min-w-0 flex-1 mr-2">
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-semibold text-zinc-200 truncate">
-                        {loc}
+                        {t.locations[loc] || loc}
                       </h4>
                       <span
                         className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-medium ${
@@ -133,16 +243,13 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
                             : 'bg-zinc-800 text-indigo-300'
                         }`}
                       >
-                        {preset.side}
+                        {preset.side === 'Front' ? t.front : t.back}
                       </span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                      {preset.description}
-                    </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[11px] font-mono text-zinc-400">
-                      {preset.widthInches}" × {preset.heightInches}"
+                    <span className="text-[11px] font-mono text-emerald-400 font-semibold">
+                      {locWcm} × {locHcm} cm
                     </span>
                   </div>
                 </button>
@@ -151,120 +258,27 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
         </div>
       </div>
 
-      {/* Scale & Dimensions (Inches and Centimeters) */}
-      <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800">
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-            <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
-            <span>Logo Dimensions &amp; Scale</span>
-          </label>
-          <button
-            onClick={() =>
-              onChange({
-                ...placement,
-                lockAspectRatio: !placement.lockAspectRatio,
-              })
-            }
-            className={`p-1.5 rounded-lg border text-xs flex items-center gap-1 transition-colors ${
-              placement.lockAspectRatio
-                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-            }`}
-            title="Lock Aspect Ratio"
-          >
-            {placement.lockAspectRatio ? (
-              <Lock className="w-3 h-3" />
-            ) : (
-              <Unlock className="w-3 h-3" />
-            )}
-            <span className="text-[10px]">Ratio Lock</span>
-          </button>
-        </div>
-
-        {/* Width & Height Inputs */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className="text-[11px] text-zinc-400 block mb-1">
-              Width (Inches)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.25"
-                min="1"
-                max="22"
-                value={placement.widthInches}
-                onChange={(e) => handleWidthChange(parseFloat(e.target.value) || 1)}
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-zinc-100 font-mono"
-              />
-              <span className="absolute right-2.5 top-1.5 text-[10px] text-zinc-500 font-mono">
-                {(placement.widthInches * 2.54).toFixed(1)} cm
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] text-zinc-400 block mb-1">
-              Height (Inches)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.25"
-                min="1"
-                max="24"
-                value={placement.heightInches}
-                onChange={(e) => handleHeightChange(parseFloat(e.target.value) || 1)}
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-zinc-100 font-mono"
-              />
-              <span className="absolute right-2.5 top-1.5 text-[10px] text-zinc-500 font-mono">
-                {(placement.heightInches * 2.54).toFixed(1)} cm
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Size Preset Chips */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-[10px] text-zinc-500">Quick Scale:</span>
-          {[
-            { label: 'Pocket (3.5")', w: 3.5 },
-            { label: 'Medium (8")', w: 8 },
-            { label: 'Standard (10.5")', w: 10.5 },
-            { label: 'Oversized (13")', w: 13 },
-          ].map((chip) => (
-            <button
-              key={chip.label}
-              onClick={() => handleWidthChange(chip.w)}
-              className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded-md transition-colors"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Position Coordinates (Nudge & Sliders) */}
+      {/* Position Coordinates & Rotation */}
       <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
             <Move className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Position Coordinates</span>
+            <span>{t.positionCoordsTitle}</span>
           </label>
           <button
             onClick={handleResetToCenter}
             className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1"
-            title="Reset to center"
+            title={t.centerBtn}
           >
             <RefreshCw className="w-3 h-3" />
-            <span>Center</span>
+            <span>{t.centerBtn}</span>
           </button>
         </div>
 
         {/* X Offset */}
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-zinc-400">Horizontal Offset (X)</span>
+            <span className="text-zinc-400">{t.horizontalOffset}</span>
             <span className="font-mono text-zinc-300">{placement.posX.toFixed(1)}%</span>
           </div>
           <input
@@ -287,7 +301,7 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
         {/* Y Offset */}
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-zinc-400">Vertical Offset from Collar (Y)</span>
+            <span className="text-zinc-400">{t.verticalOffset}</span>
             <span className="font-mono text-zinc-300">{placement.posY.toFixed(1)}%</span>
           </div>
           <input
@@ -312,7 +326,7 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
           <div className="flex items-center justify-between text-[11px] mb-1">
             <span className="text-zinc-400 flex items-center gap-1">
               <RotateCw className="w-3 h-3" />
-              <span>Rotation Angle</span>
+              <span>{t.rotationAngle}</span>
             </span>
             <span className="font-mono text-zinc-300">{placement.rotation}°</span>
           </div>
@@ -345,7 +359,7 @@ export const PlacementControls: React.FC<PlacementControlsProps> = ({
         {/* Opacity */}
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-zinc-400">Artwork Opacity</span>
+            <span className="text-zinc-400">{t.logoOpacity}</span>
             <span className="font-mono text-zinc-300">{Math.round(placement.opacity * 100)}%</span>
           </div>
           <input

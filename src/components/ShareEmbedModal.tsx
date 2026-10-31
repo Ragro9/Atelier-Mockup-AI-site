@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import {
   X,
-  Share2,
   Copy,
   Check,
   Globe,
-  ExternalLink,
   Code,
-  Layers,
   Sparkles,
 } from 'lucide-react';
+import { Language } from '../locales/translations';
 
 interface ShareEmbedModalProps {
   isOpen: boolean;
   onClose: () => void;
   appUrl: string;
+  lang: Language;
 }
 
 export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
   isOpen,
   onClose,
   appUrl,
+  lang,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedIframe, setCopiedIframe] = useState(false);
@@ -53,10 +53,14 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-                Share &amp; Embed into Google Sites
+                {lang === 'sq'
+                  ? 'Shpërndaj & Vendos në Google Sites'
+                  : 'Share & Embed into Google Sites'}
               </h3>
               <p className="text-xs text-zinc-400">
-                Deploy this mockup studio as a Google Site embed or shareable web app
+                {lang === 'sq'
+                  ? 'Përdoreni këtë studio maketash në Google Sites ose dërgojeni me link të drejtpërdrejtë'
+                  : 'Deploy this mockup studio as a Google Site embed or shareable web app'}
               </p>
             </div>
           </div>
@@ -73,7 +77,7 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
           {/* Direct Share Link */}
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              Direct Web App Link
+              {lang === 'sq' ? 'Linku i Drejtpërdrejtë i Faqes' : 'Direct Web App Link'}
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -89,12 +93,12 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
                 {copiedLink ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Copied</span>
+                    <span>{lang === 'sq' ? 'U Kopjua' : 'Copied'}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Link</span>
+                    <span>{lang === 'sq' ? 'Kopjo Linkun' : 'Copy Link'}</span>
                   </>
                 )}
               </button>
@@ -105,20 +109,32 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
           <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
               <Sparkles className="w-4 h-4" />
-              <span>How to Embed into Google Sites</span>
+              <span>
+                {lang === 'sq'
+                  ? 'Si ta Vendosni në Google Sites (Hap pas Hapi)'
+                  : 'How to Embed into Google Sites'}
+              </span>
             </div>
             <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside leading-relaxed">
               <li>
-                Open your <strong>Google Site</strong> in Google Sites editor.
+                {lang === 'sq'
+                  ? 'Hapni faqen tuaj në redaktuesin e Google Sites (sites.google.com).'
+                  : 'Open your Google Site in Google Sites editor.'}
               </li>
               <li>
-                In the right panel, click <strong>Insert &gt; Embed</strong>.
+                {lang === 'sq'
+                  ? 'Në panelin djathtas, klikoni butonin "Insert" (Fut) > "Embed" (Vendos).'
+                  : 'In the right panel, click Insert > Embed.'}
               </li>
               <li>
-                Choose <strong>By URL</strong> and paste the app link above, or choose <strong>Embed Code</strong> and paste the HTML snippet below.
+                {lang === 'sq'
+                  ? 'Zgjidhni "By URL" dhe ngjisni linkun e mësipërm, ose zgjidhni "Embed Code" dhe ngjisni kodin HTML më poshtë.'
+                  : 'Choose By URL and paste the app link above, or choose Embed Code and paste the HTML snippet below.'}
               </li>
               <li>
-                Resize the embedded frame on your page so team members and clients can test placements freely!
+                {lang === 'sq'
+                  ? 'Rregulloni madhësinë e dritares në faqe që klientët dhe ekipi ta testojnë lirisht!'
+                  : 'Resize the embedded frame on your page so team members and clients can test placements freely!'}
               </li>
             </ol>
           </div>
@@ -128,7 +144,7 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
                 <Code className="w-3.5 h-3.5 text-zinc-500" />
-                <span>Responsive Embed Code (IFrame)</span>
+                <span>{lang === 'sq' ? 'Kodi i Gatshëm HTML (IFrame)' : 'Responsive Embed Code (IFrame)'}</span>
               </label>
               <button
                 onClick={handleCopyIframe}
@@ -137,12 +153,12 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
                 {copiedIframe ? (
                   <>
                     <Check className="w-3 h-3 text-emerald-400" />
-                    <span>Copied Code</span>
+                    <span>{lang === 'sq' ? 'U Kopjua Kodi' : 'Copied Code'}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3 h-3" />
-                    <span>Copy Snippet</span>
+                    <span>{lang === 'sq' ? 'Kopjo Kodin' : 'Copy Snippet'}</span>
                   </>
                 )}
               </button>
@@ -163,7 +179,7 @@ export const ShareEmbedModal: React.FC<ShareEmbedModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-colors"
           >
-            Close
+            {lang === 'sq' ? 'Mbyll' : 'Close'}
           </button>
         </div>
       </div>

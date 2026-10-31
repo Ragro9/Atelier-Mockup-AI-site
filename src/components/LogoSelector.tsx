@@ -5,11 +5,10 @@ import {
   Upload,
   Image as ImageIcon,
   Check,
-  Sparkles,
   Contrast,
-  Sliders,
   Scissors,
 } from 'lucide-react';
+import { TRANSLATIONS, Language } from '../locales/translations';
 
 interface LogoSelectorProps {
   currentLogo: LogoPreset | null;
@@ -19,6 +18,7 @@ interface LogoSelectorProps {
   onInvertLogoColors: () => void;
   onRemoveLogoBackground: () => void;
   isProcessingLogo: boolean;
+  lang: Language;
 }
 
 export const LogoSelector: React.FC<LogoSelectorProps> = ({
@@ -29,7 +29,9 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
   onInvertLogoColors,
   onRemoveLogoBackground,
   isProcessingLogo,
+  lang,
 }) => {
+  const t = TRANSLATIONS[lang];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -65,11 +67,11 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
             <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] flex items-center justify-center font-bold">
               2
             </span>
-            <span>Upload Logo / Graphic (IMAGE 2)</span>
+            <span>{t.uploadLogoTitle}</span>
           </label>
           {customLogoImage && (
             <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> Custom Logo Active
+              <Check className="w-3 h-3" /> {t.customLogoActive}
             </span>
           )}
         </div>
@@ -101,10 +103,10 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
             </div>
             <div>
               <p className="text-xs font-semibold text-zinc-200">
-                Click or drag &amp; drop artwork file
+                {t.dropLogoText}
               </p>
               <p className="text-[11px] text-zinc-500 mt-0.5">
-                PNG with transparency recommended, SVG, or JPG
+                {t.dropLogoHint}
               </p>
             </div>
           </div>
@@ -114,27 +116,27 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
       {/* Quick Artwork Processing Tools */}
       <div>
         <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-          Graphic Utility Tools
+          {t.utilityToolsTitle}
         </label>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onInvertLogoColors}
             disabled={isProcessingLogo}
             className="py-2 px-3 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-200 flex items-center justify-center gap-1.5 transition-colors"
-            title="Invert black to white or white to black (great for dark garments)"
+            title="Përmbys të zezën në të bardhë ose të bardhën në të zezë"
           >
             <Contrast className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Invert Colors</span>
+            <span>{t.invertColors}</span>
           </button>
 
           <button
             onClick={onRemoveLogoBackground}
             disabled={isProcessingLogo}
             className="py-2 px-3 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-200 flex items-center justify-center gap-1.5 transition-colors"
-            title="Auto-key white/light background to transparent"
+            title="Hiq automatikisht sfondin e bardhë të logos"
           >
             <Scissors className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Key Out White</span>
+            <span>{t.keyOutWhite}</span>
           </button>
         </div>
       </div>
@@ -143,14 +145,15 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            Sample Graphic Library
+            {t.sampleLogosTitle}
           </label>
-          <span className="text-[11px] text-zinc-500">Instant test emblems</span>
+          <span className="text-[11px] text-zinc-500">{t.instantEmblems}</span>
         </div>
 
         <div className="space-y-2">
           {LOGO_PRESETS.map((logo) => {
             const isSelected = !customLogoImage && currentLogo?.id === logo.id;
+            const logoCm = (logo.defaultWidthInches * 2.54).toFixed(0);
             return (
               <button
                 key={logo.id}
@@ -173,7 +176,7 @@ export const LogoSelector: React.FC<LogoSelectorProps> = ({
                     {logo.name}
                   </h4>
                   <p className="text-[11px] text-zinc-500 truncate mt-0.5">
-                    {logo.category} • Default {logo.defaultWidthInches}"
+                    {logo.category} • {logoCm} cm
                   </p>
                 </div>
                 {isSelected && (
