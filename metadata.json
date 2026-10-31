@@ -1,0 +1,6 @@
+{
+  "name": "Atelier Studio - AI Apparel Mockup & Fashion Stylist",
+  "description": "Automated e-commerce apparel mockup app and digital fashion stylist with hyper-realistic fabric mapping, dimensional placement specs, and 2D flat-lay conversion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
